@@ -1,0 +1,64 @@
+# Description for each part and their specialized "values"
+
+FUNCTIONS = {
+    "motor": ["propulsion", "thrust_generation"],
+    "esc": ["motor_control", "power_management"],
+    "battery": ["energy_storage", "power_supply"],
+    "propeller": ["propulsion", "thrust_generation"],
+    "flight_controller": ["flight_stabilization", "control"],
+    "gps": ["navigation", "positioning"],
+    "camera": ["imaging", "visual_sensing"],
+    "frame": ["structural_support"],
+    "sensor": ["environmental_sensing"],
+}
+
+
+def classify_component(row):
+
+    component = str(row.get(
+        "component_type", ""
+    )).lower().strip()
+
+    result = {
+        "functional_labels": [],
+        "application_labels": [],
+        "classification_status": "unclassified"
+    }
+
+    # Identify component function
+    if component in FUNCTIONS:
+
+        result["functional_labels"] = FUNCTIONS[component]
+
+        result["classification_status"] = "classified"
+
+    # Use documented manufacturer applications
+
+    application = row.get("manufacturer_application", "")
+
+    if pd.notna(application) and str(application).strip():
+
+        result["application_labels"] = [
+            item.strip()
+            for item in str(application).split(";")
+            if item.strip()
+        ]
+
+    return pd.Series(result)
+
+
+def label_database(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+
+    labels = df.apply(classify_component, axis=1)
+
+    df = pd.concat([df, labels], axis=1)
+
+    df.to_csv(output_file, index=False)
+
+    print("Classification complete!")
+    print(f"Processed components: {len(df)}")
+    print(f"Saved to: {output_file}")
+
+    return df
