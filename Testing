@@ -1,0 +1,60 @@
+import pandas as pd
+from classifier import classify_component
+from compatibility import build_compatibility
+
+
+def test_classify_component_known_and_applications():
+    row = pd.Series({
+        "component_type": "Motor",
+        "manufacturer_application": "freestyle ; racing ; "
+    })
+
+    result = classify_component(row)
+
+    assert result["functional_labels"] == ["propulsion", "thrust_generation"]
+    assert result["application_labels"] == ["freestyle", "racing"]
+    assert result["classification_status"] == "classified"
+
+
+def test_classify_component_unknown_and_missing_app():
+    row = pd.Series({
+        "component_type": "unknown_part",
+        "manufacturer_application": None
+    })
+
+    result = classify_component(row)
+
+    assert result["functional_labels"] == []
+    assert result["application_labels"] == []
+    assert result["classification_status"] == "unclassified"
+
+
+def test_build_compatibility(tmp_path):
+    input_csv = tmp_path / "sample_parts.csv"
+    output_csv = tmp_path / "sample_compat.csv"
+
+    df = pd.DataFrame([
+        {
+            "part_id": "m1",
+            "compatible_parts": "esc1; esc2",
+            "source": "FPV-DB"
+        },
+        {
+            "part_id": "m2",
+            "compatible_parts": "",
+            "source": "FPV-DB"
+        },
+        {
+            "part_id": "m3",
+            "compatible_parts": None,
+            "source": "FPV-DB"
+        }
+    ])
+    df.to_csv(input_csv, index=False)
+
+    compat_df = build_compatibility(str(input_csv), str(output_csv))
+
+    assert output_csv.exists()
+    assert len(compat_df) == 2
+    assert list(compat_df["compatible_part_id"]) == ["esc1", "esc2"]
+    assert all(compat_df["relationship"] == "documented_compatibility")
