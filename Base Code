@@ -1,0 +1,50 @@
+from classifier import label_database
+from compatibility import build_compatibility
+
+import os
+
+
+def main():
+
+    input_file = "data/drone_parts.csv"
+
+    output_folder = "output"
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    labeled_file = os.path.join(
+        output_folder,
+        "labeled_parts.csv"
+    )
+
+    compatibility_file = os.path.join(
+        output_folder,
+        "compatibility.csv"
+    )
+
+    print("\nDRONE PARTS AI DATABASE")
+    print("-----------------------")
+
+    # Step 1: Classify components
+
+    label_database(
+        input_file,
+        labeled_file
+    )
+
+    # Step 2: Build compatibility relationships
+
+    build_compatibility(
+        input_file,
+        compatibility_file
+    )
+
+    print("\nProcessing finished!")
+    print("Check the output folder.")
+
+
+if __name__ == "__main__":
+    main()
+
+
+
