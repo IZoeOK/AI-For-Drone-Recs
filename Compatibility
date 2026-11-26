@@ -1,0 +1,39 @@
+import pandas as pd
+
+
+def build_compatibility(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+
+    relationships = []
+
+    for _, row in df.iterrows():
+
+        part_id = row["part_id"]
+
+        compatible = row.get("compatible_parts", "")
+
+        if pd.isna(compatible):
+            continue
+
+        for other_part in str(compatible).split(";"):
+
+            other_part = other_part.strip()
+
+            if not other_part:
+                continue
+
+            relationships.append({
+                "part_id": part_id,
+                "compatible_part_id": other_part,
+                "relationship": "documented_compatibility",
+                "source": row.get("source", "")
+            })
+
+    result = pd.DataFrame(relationships)
+
+    result.to_csv(output_file, index=False)
+
+    print("Compatibility database created!")
+
+    return result
