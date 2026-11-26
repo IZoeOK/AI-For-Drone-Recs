@@ -1,0 +1,159 @@
+import pandas as pd
+import json
+import os
+
+# Official FPV-DB dataset
+BASE_URL = (
+    "https://raw.githubusercontent.com/"
+    "fpvdb/fpv-db-data/main/"
+)
+
+FUNCTIONS = {
+    "motor": ["propulsion", "thrust_generation"],
+    "esc": ["motor_control", "power_management"],
+    "battery": ["energy_storage", "power_supply"],
+    "propeller": ["propulsion", "thrust_generation"],
+    "flight_controller": ["flight_stabilization", "control"],
+    "gps": ["navigation", "positioning"],
+    "camera": ["imaging", "visual_sensing"],
+    "frame": ["structural_support"],
+    "sensor": ["environmental_sensing"],
+}
+
+
+def classify_component(row):
+
+    component = str(row.get(
+        "component_type", ""
+    )).lower().strip()
+
+    result = {
+        "functional_labels": [],
+        "application_labels": [],
+        "classification_status": "unclassified"
+    }
+
+    # Identify component function
+    if component in FUNCTIONS:
+
+        result["functional_labels"] = FUNCTIONS[component]
+
+        result["classification_status"] = "classified"
+
+    # Use documented manufacturer applications
+
+    application = row.get("manufacturer_application", "")
+
+    if pd.notna(application) and str(application).strip():
+
+        result["application_labels"] = [
+            item.strip()
+            for item in str(application).split(";")
+            if item.strip()
+        ]
+
+    return pd.Series(result)
+
+
+def label_database(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+
+    labels = df.apply(classify_component, axis=1)
+
+    df = pd.concat([df, labels], axis=1)
+
+    df.to_csv(output_file, index=False)
+
+    print("Classification complete!")
+    print(f"Processed components: {len(df)}")
+    print(f"Saved to: {output_file}")
+
+    return df
+
+def build_compatibility(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+
+    relationships = []
+
+    for _, row in df.iterrows():
+
+        part_id = row["part_id"]
+
+        compatible = row.get("compatible_parts", "")
+
+        if pd.isna(compatible):
+            continue
+
+        for other_part in str(compatible).split(";"):
+
+            other_part = other_part.strip()
+
+            if not other_part:
+                continue
+
+            relationships.append({
+                "part_id": part_id,
+                "compatible_part_id": other_part,
+                "relationship": "documented_compatibility",
+                "source": row.get("source", "")
+            })
+
+    result = pd.DataFrame(relationships)
+
+    result.to_csv(output_file, index=False)
+
+    print("Compatibility database created!")
+
+    return result
+
+from classifier import label_database
+from compatibility import build_compatibility
+
+import os
+
+
+def main():
+
+    input_file = "data/drone_parts.csv"
+
+    output_folder = "output"
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    labeled_file = os.path.join(
+        output_folder,
+        "labeled_parts.csv"
+    )
+
+    compatibility_file = os.path.join(
+        output_folder,
+        "compatibility.csv"
+    )
+
+    print("\nDRONE PARTS AI DATABASE")
+    print("-----------------------")
+
+    # Step 1: Classify components
+
+    label_database(
+        input_file,
+        labeled_file
+    )
+
+    # Step 2: Build compatibility relationships
+
+    build_compatibility(
+        input_file,
+        compatibility_file
+    )
+
+    print("\nProcessing finished!")
+    print("Check the output folder.")
+
+
+if __name__ == "__main__":
+    main()
+
+
